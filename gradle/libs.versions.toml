@@ -1,6 +1,6 @@
 [versions]
 kotlin = "1.9.23"
-junit-jupiter = "5.10.1"
+junit-jupiter = "5.10.2"
 assertj-core = "3.25.3"
 kotlinx-coroutines-core = "1.8.0"
 mockk = "1.13.10"

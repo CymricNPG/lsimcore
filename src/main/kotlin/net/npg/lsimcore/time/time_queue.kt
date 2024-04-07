@@ -86,7 +86,7 @@ class WorkQueue(
         requestExecutor.execute {
             synchronized(queue) {
                 try {
-                    _requestAdvance(workerId, nextTime)
+                    requestAdvanceAsync(workerId, nextTime)
                 } catch (e: Exception) {
                     handleError(workerId, e)
                 }
@@ -121,7 +121,10 @@ class WorkQueue(
         endLatch.await()
     }
 
-    private fun _requestAdvance(workerId: Id, nextTime: Time) {
+    /**
+     * not async, but should be executed in own thread
+     */
+    private fun requestAdvanceAsync(workerId: Id, nextTime: Time) {
         checkAdvanceRequest(workerId, nextTime)
         val workerContext = workers[workerId]!!
 

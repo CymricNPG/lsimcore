@@ -12,6 +12,7 @@ buildscript {
 plugins {
     kotlin("jvm") version libs.versions.kotlin
     id("org.jetbrains.dokka") version libs.versions.dokka
+    id("org.sonarqube") version libs.versions.sonarqube
     application
 }
 
@@ -58,4 +59,10 @@ tasks.withType<DokkaTask>().configureEach {
 }
 tasks.named("assemble") {
     dependsOn(tasks.dokkaHtml)
+}
+
+sonar {
+    properties {
+        property("sonar.host.url", "http://172.16.42.7:9000")
+    }
 }

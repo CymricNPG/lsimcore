@@ -13,6 +13,7 @@ plugins {
     kotlin("jvm") version libs.versions.kotlin
     id("org.jetbrains.dokka") version libs.versions.dokka
     id("org.sonarqube") version libs.versions.sonarqube
+    id("com.github.ben-manes.versions") version libs.versions.versions
     application
 }
 

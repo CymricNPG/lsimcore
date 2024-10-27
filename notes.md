@@ -7,6 +7,8 @@
     - remove worker -> testing
     - run modification in context of time management (e.g. modify stoptime add worker etc -> stop exeuction to avoid wallclock weirdness)
 - Add Coverage Analysis
+- Publish Dokka to github
+- Simple Event distribution
 
 ## Hints
 

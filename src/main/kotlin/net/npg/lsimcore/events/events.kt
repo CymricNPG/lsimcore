@@ -17,7 +17,9 @@
  ************************************************************************************/
 package net.npg.lsimcore.events
 
+import net.npg.lsimcore.base.Id
 import java.util.concurrent.CompletableFuture
+import java.util.function.Predicate
 
 /**
  * EventBorder is a simplified interface to any event delivery system.
@@ -27,6 +29,7 @@ import java.util.concurrent.CompletableFuture
  * generic event with a content
  */
 interface Event<T : Any> {
+    val id: Id
     val content: T
 }
 
@@ -34,48 +37,36 @@ interface Event<T : Any> {
 /**
  * the interface to send and receive events. Two event types are supported: synchronous events and asnyc events
  */
-interface EventBorder {
+interface EventBorder<T : Event<*>> {
 
     /**
-     * send a synchronous, for which the caller can wait for a confirmation of the delivery
+     * send a for which the caller can wait for a confirmation of the delivery
      */
-    fun sendEvent(event: Event<*>)
-
-    /**
-     * send an event where we don't care when ist delivered
-     */
-    fun sendAsyncEvent(event: Event<*>)
+    fun sendEvent(event: T)
 
     /**
      * wait till all synchronous events are delivered
      */
     fun wait4Delivery()
 
-    /**
-     * poll all waiting events
-     */
-//
-//    fun
+    fun retrieveEvents(filter: Predicate<T>): Collection<T>
 }
 
-interface EventReceiver {
-    fun acceptEvent(event: Event<*>)
-    fun isDeliverableEvent(event: Event<*>): Boolean
+/**
+ * receives all events
+ */
+interface EventReceiver<T : Event<*>> {
+    fun acceptEvent(event: T)
 }
 
 fun interface Disposable : AutoCloseable
 
-interface EventBroker {
+interface EventBroker<T : Event<*>> {
     /**
-     * send a synchronous, for which the caller can wait for a confirmation of the delivery
+     * sends an event for which the caller can wait for a confirmation of the delivery
      */
-    fun sendSyncEvent(event: Event<*>): CompletableFuture<Unit>
+    fun sendEvent(event: Event<*>): CompletableFuture<Unit>
 
-    /**
-     * send an event where we don't care when ist delivered
-     */
-    fun sendAsyncEvent(event: Event<*>)
-
-    fun registerEventReceiver(receiver: EventReceiver): Disposable
+    fun registerEventReceiver(receiver: EventReceiver<T>): Disposable
 
 }

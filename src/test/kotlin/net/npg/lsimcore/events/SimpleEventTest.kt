@@ -12,7 +12,7 @@ class SimpleEventTest {
     @Test
     fun testSimpleEventBorder() {
         val logger = StdoutLogger()
-        var called: AtomicInteger = AtomicInteger(0)
+        val called = AtomicInteger(0)
 
         val broker = mockk<SimpleEventBroker<String>>()
         every { broker.registerEventReceiver(any()) }.returns({ called.incrementAndGet() })

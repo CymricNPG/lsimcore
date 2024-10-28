@@ -28,18 +28,25 @@ import java.util.function.Predicate
 /**
  * a synchronous event
  */
-class SimpleEvent<T : Any>(
+class SimpleEvent<T : Any> private constructor(
     override val content: T,
     override val id: Id,
 ) : Event<T>, Comparable<SimpleEvent<T>> {
+
     override fun compareTo(other: SimpleEvent<T>): Int {
         return id.compareTo(other.id)
     }
+
+    companion object {
+        fun <T : Any> create(content: T): SimpleEvent<T> {
+            return SimpleEvent(content, Id.create())
+        }
+    }
 }
 
-class SimpleEventBorder<T : SimpleEvent<Any>>(
+class SimpleEventBorder<T : Any>(
     private val broker: EventBroker<T>,
-    private val eventsAccepted: Predicate<T>,
+    private val eventsAccepted: Predicate<Event<T>>,
     private val logger: Logger
 ) : EventBorder<T>, EventReceiver<T>, Disposable {
     init {
@@ -48,9 +55,9 @@ class SimpleEventBorder<T : SimpleEvent<Any>>(
 
     private var registrationEventBroker: Disposable
     private val sendConfirmations: MutableCollection<CompletableFuture<Unit>> = mutableListOf()
-    private val eventQueue: MutableCollection<T> = mutableListOf()
+    private val eventQueue: MutableCollection<Event<T>> = mutableListOf()
 
-    override fun sendEvent(event: T) {
+    override fun sendEvent(event: Event<T>) {
         synchronized(sendConfirmations) {
             val confirmation = broker.sendEvent(event)
             sendConfirmations.add(confirmation)
@@ -69,11 +76,11 @@ class SimpleEventBorder<T : SimpleEvent<Any>>(
         }
     }
 
-    override fun retrieveEvents(filter: Predicate<T>): List<T> {
+    override fun retrieveEvents(filter: Predicate<Event<T>>): Collection<Event<T>> {
         Objects.requireNonNull(filter)
         synchronized(eventQueue) {
             val each = eventQueue.iterator()
-            val foundElements = mutableListOf<T>()
+            val foundElements = mutableListOf<Event<T>>()
             while (each.hasNext()) {
                 val next = each.next()
                 if (filter.test(next)) {
@@ -85,7 +92,7 @@ class SimpleEventBorder<T : SimpleEvent<Any>>(
         }
     }
 
-    override fun acceptEvent(event: T) {
+    override fun acceptEvent(event: Event<T>) {
         if (eventsAccepted.test(event)) {
             synchronized(eventQueue) {
                 eventQueue.add(event)
@@ -101,12 +108,24 @@ class SimpleEventBorder<T : SimpleEvent<Any>>(
     }
 }
 
-class SimpleEventBroker<T : SimpleEvent<Any>> : EventBroker<T> {
-    override fun sendEvent(event: Event<*>): CompletableFuture<Unit> {
-        TODO("Not yet implemented")
+class SimpleEventBroker<T : Any> : EventBroker<T> {
+    private val receivers: MutableList<EventReceiver<T>> = mutableListOf()
+
+    override fun sendEvent(event: Event<T>): CompletableFuture<Unit> {
+        return CompletableFuture.supplyAsync { processEvent(event) }
+    }
+
+    private fun processEvent(event: Event<T>) {
+        synchronized(receivers) {
+            receivers.forEach { r -> r.acceptEvent(event) }
+        }
     }
 
     override fun registerEventReceiver(receiver: EventReceiver<T>): Disposable {
-        TODO("Not yet implemented")
+        synchronized(receivers) {
+            receivers.add(receiver)
+            return Disposable { synchronized(receivers) { receivers.remove(receiver) } }
+        }
     }
+
 }

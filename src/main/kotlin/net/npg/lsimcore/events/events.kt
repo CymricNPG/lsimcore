@@ -37,35 +37,35 @@ interface Event<T : Any> {
 /**
  * the interface to send and receive events. Two event types are supported: synchronous events and asnyc events
  */
-interface EventBorder<T : Event<*>> {
+interface EventBorder<T : Any> {
 
     /**
      * send a for which the caller can wait for a confirmation of the delivery
      */
-    fun sendEvent(event: T)
+    fun sendEvent(event: Event<T>)
 
     /**
      * wait till all synchronous events are delivered
      */
     fun wait4Delivery()
 
-    fun retrieveEvents(filter: Predicate<T>): Collection<T>
+    fun retrieveEvents(filter: Predicate<Event<T>>): Collection<Event<T>>
 }
 
 /**
  * receives all events
  */
-interface EventReceiver<T : Event<*>> {
-    fun acceptEvent(event: T)
+interface EventReceiver<T : Any> {
+    fun acceptEvent(event: Event<T>)
 }
 
 fun interface Disposable : AutoCloseable
 
-interface EventBroker<T : Event<*>> {
+interface EventBroker<T : Any> {
     /**
      * sends an event for which the caller can wait for a confirmation of the delivery
      */
-    fun sendEvent(event: Event<*>): CompletableFuture<Unit>
+    fun sendEvent(event: Event<T>): CompletableFuture<Unit>
 
     fun registerEventReceiver(receiver: EventReceiver<T>): Disposable
 

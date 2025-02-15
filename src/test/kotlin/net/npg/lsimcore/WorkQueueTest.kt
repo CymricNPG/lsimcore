@@ -37,7 +37,7 @@ internal class WorkQueueTest {
         assertEquals(zeroClock, worker.localTime)
         assertEquals(1, worker.invoked)
 
-        queue.requestAdvance(worker.id, nextTime100)
+        queue.requestAdvance(worker, nextTime100)
         assertEquals(worker.localTime, nextTime100)
         assertEquals(nextTime100, wallClock.time)
         assertEquals(2, worker.invoked)
@@ -53,11 +53,11 @@ internal class WorkQueueTest {
 
         queue.start()
 
-        queue.requestAdvance(worker50.id, nextTime50)
+        queue.requestAdvance(worker50, nextTime50)
         assertEquals(nextTime50, wallClock.time)
-        queue.requestAdvance(worker100.id, nextTime100)
+        queue.requestAdvance(worker100, nextTime100)
         assertEquals(nextTime50, wallClock.time)
-        queue.requestAdvance(worker50.id, nextTime100)
+        queue.requestAdvance(worker50, nextTime100)
         assertEquals(nextTime100, wallClock.time)
         assertEquals(2, worker100.invoked)
         assertEquals(3, worker50.invoked)
@@ -74,14 +74,14 @@ internal class WorkQueueTest {
 
         queue.start()
 
-        queue.requestAdvance(worker50.id, nextTime50)
-        queue.requestAdvance(worker50.id, nextTime100)
-        queue.requestAdvance(worker100.id, nextTime100)
-        queue.removeWorker(worker50.id)
+        queue.requestAdvance(worker50, nextTime50)
+        queue.requestAdvance(worker50, nextTime100)
+        queue.requestAdvance(worker100, nextTime100)
+        queue.removeWorker(worker50)
         assertThrows<IllegalArgumentException> {
-            queue.requestAdvance(worker50.id, nextTime150)
+            queue.requestAdvance(worker50, nextTime150)
         }
-        queue.requestAdvance(worker100.id, nextTime200)
+        queue.requestAdvance(worker100, nextTime200)
         assertEquals(nextTime200, wallClock.time)
         assertEquals(3, worker100.invoked)
         assertEquals(3, worker50.invoked)
@@ -98,10 +98,10 @@ internal class WorkQueueTest {
 
         queue.start()
 
-        queue.requestAdvance(worker50.id, nextTime50)
-        queue.requestAdvance(worker50.id, nextTime100)
-        queue.requestAdvance(worker100.id, nextTime100)
-        queue.requestAdvance(worker50.id, nextTime150)
+        queue.requestAdvance(worker50, nextTime50)
+        queue.requestAdvance(worker50, nextTime100)
+        queue.requestAdvance(worker100, nextTime100)
+        queue.requestAdvance(worker50, nextTime150)
 
         assertEquals(nextTime150, wallClock.time)
         assertEquals(2, worker100.invoked)
@@ -120,11 +120,11 @@ internal class WorkQueueTest {
     }
 
     private fun advance(queue: WorkQueue, worker: WorkerImpl, time: Long) {
-        queue.requestAdvance(worker.id, fromMs(time))
+        queue.requestAdvance(worker, fromMs(time))
     }
 
     fun advanceBlocking(queue: WorkQueue, worker: Worker, time: Long) {
-        queue.requestAdvance(worker.id, fromMs(time))
+        queue.requestAdvance(worker, fromMs(time))
 
     }
 

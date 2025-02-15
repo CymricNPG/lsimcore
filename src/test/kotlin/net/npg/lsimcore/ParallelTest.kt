@@ -93,7 +93,7 @@ class FastWorker(val _lookahead: Long, val queue: WorkQueue) : Worker {
         localTime = time
         invoked++
         semaphore.release()
-        queue.requestAdvance(id, time + lookahead)
+        queue.requestAdvance(this, time + lookahead)
     }
 
     var localTime: Time = fromMs(0)

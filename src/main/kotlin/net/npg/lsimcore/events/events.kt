@@ -35,7 +35,7 @@ interface Event<T : Any> {
 
 
 /**
- * the interface to send and receive events. Two event types are supported: synchronous events and asnyc events
+ * the interface to send and receive events. Two event types are supported: synchronous events and asynchronous events
  */
 interface EventBorder<T : Any> {
 

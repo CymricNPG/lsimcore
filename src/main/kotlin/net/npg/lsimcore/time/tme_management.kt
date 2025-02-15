@@ -33,17 +33,24 @@ interface TimeManagement {
      * the registered worker has completed its work and wants to advance to the next time.
      * The call is async and returns immediately
      */
-    fun requestAdvance(workerId: Id, nextTime: Time)
+    fun requestAdvance(worker: Worker, nextTime: Time)
 
     /**
      * removes a worker, a current execution will be finished
      */
-    fun removeWorker(workerId: Id)
+    fun removeWorker(worker: Worker)
 
     /**
      * returns the time at the wallclock
      */
     fun getWallClock(): Time
+
+}
+
+interface BlockingTimeManagement {
+
+    fun requestAdvance(nextTime: Time)
+
 }
 
 /**

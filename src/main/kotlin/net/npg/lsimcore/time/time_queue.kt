@@ -18,6 +18,7 @@
 package net.npg.lsimcore.time
 
 import net.npg.lsimcore.base.*
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.Volatile
@@ -49,10 +50,10 @@ class WorkQueue(
      */
     private val endLatch = CountDownLatch(1)
 
-    override fun removeWorker(workerId: Id) {
+    override fun removeWorker(worker: Worker) {
         synchronized(queue) {
-            workers.remove(workerId) ?: return
-            queue.removeIf { wt -> wt.workerId == workerId }
+            workers.remove(worker.id) ?: return
+            queue.removeIf { wt -> wt.workerId == worker.id }
         }
     }
 
@@ -81,39 +82,39 @@ class WorkQueue(
         }
     }
 
-    override fun requestAdvance(workerId: Id, nextTime: Time) {
-        checkAdvanceRequest(workerId, nextTime)
+    override fun requestAdvance(worker: Worker, nextTime: Time) {
+        checkAdvanceRequest(worker, nextTime)
         requestExecutor.execute {
             synchronized(queue) {
                 try {
-                    requestAdvanceAsync(workerId, nextTime)
+                    requestAdvanceAsync(worker, nextTime)
                 } catch (e: Exception) {
-                    handleError(workerId, e)
+                    handleError(worker, e)
                 }
             }
         }
     }
 
-    private fun checkAdvanceRequest(workerId: Id, nextTime: Time) {
+    private fun checkAdvanceRequest(worker: Worker, nextTime: Time) {
         synchronized(queue) {
             require(nextTime >= wallClock.time)
-            val workerContext = workers[workerId]
+            val workerContext = workers[worker.id]
             requireNotNull(workerContext)
             require(nextTime >= workerContext.nextTime)
         }
     }
 
-    private fun handleError(workerId: Id, e: Exception) {
-        val worker = workers[workerId]
-        if (worker == null) {
-            logger.log(LogLevel.WARN, "Worker $workerId no longer exists, but an error happened for this worker", e)
+    private fun handleError(worker: Worker, e: Exception) {
+        val workerContext = workers[worker.id]
+        if (workerContext == null) {
+            logger.log(LogLevel.WARN, "Worker ${worker.id} no longer exists, but an error happened for this worker", e)
         } else {
             logger.log(
                 LogLevel.WARN,
-                "While handling worker $workerId an error happened, the worker will be removed",
+                "While handling worker ${worker.id} an error happened, the worker will be removed",
                 e
             )
-            removeWorker(workerId)
+            removeWorker(worker)
         }
     }
 
@@ -124,10 +125,9 @@ class WorkQueue(
     /**
      * not async, but should be executed in own thread
      */
-    private fun requestAdvanceAsync(workerId: Id, nextTime: Time) {
-        checkAdvanceRequest(workerId, nextTime)
-        val workerContext = workers[workerId]!!
-
+    private fun requestAdvanceAsync(worker: Worker, nextTime: Time) {
+        checkAdvanceRequest(worker, nextTime)
+        val workerContext = workers[worker.id]!!
         removeBlockTask(workerContext.id)
         if (checkForEnd(nextTime)) {
             return
@@ -150,11 +150,11 @@ class WorkQueue(
     }
 
     private fun removeBlockTask(workerId: Id) {
-        queue.removeIf { it.workerId == workerId && it.blockTask }
+        queue.removeIf { it.workerId == workerId && it.taskType == TaskType.BLOCKING }
     }
 
     private fun advanceAllWaitingTasks() {
-        while (queue.peek()?.blockTask == false) {
+        while (queue.peek()?.taskType == TaskType.ADVANCE_GRANTED) {
             val nextTask = queue.poll()
             advanceTime(nextTask.time)
             val worker = workers[nextTask.workerId]
@@ -165,12 +165,12 @@ class WorkQueue(
     }
 
     private fun addBlockTask(nextTime: Time, worker: WorkerContext) {
-        queue.add(WorkTaskImpl(nextTime, worker.id, true))
+        queue.add(WorkTaskImpl(nextTime, worker.id, TaskType.BLOCKING))
         worker.nextTime = nextTime
     }
 
     private fun addAdvanceTask(nextTime: Time, worker: WorkerContext) {
-        queue.add(WorkTaskImpl(nextTime, worker.id, false))
+        queue.add(WorkTaskImpl(nextTime, worker.id, TaskType.ADVANCE_GRANTED))
     }
 
     private fun advanceGranted(worker: WorkerContext, time: Time) {
@@ -191,25 +191,28 @@ class WorkQueue(
 interface WorkTask : Comparable<WorkTask> {
     val time: Time
     val workerId: Id
-    val blockTask: Boolean
+    val taskType: TaskType
+}
+
+enum class TaskType {
+    EXTERNAL_ADVANCE,
+    BLOCKING,
+    ADVANCE_GRANTED,
 }
 
 open class WorkTaskImpl(
     override val time: Time,
     override val workerId: Id,
-    override val blockTask: Boolean
+    override val taskType: TaskType
 ) : WorkTask {
     override fun compareTo(other: WorkTask): Int {
         // The magic, sort by time, blockTask and finally by id
         // blockTask == true has always priority, Workers can only be executed after all blockTasks have been removed!
         return if (time.compareTo(other.time) == 0) {
-            if (blockTask == other.blockTask) {
+            if (taskType == other.taskType) {
                 workerId.compareTo(other.workerId)
             } else {
-                when {
-                    blockTask -> -1
-                    else -> 1
-                }
+                taskType.compareTo(other.taskType)
             }
         } else {
             time.compareTo(other.time)
@@ -217,7 +220,7 @@ open class WorkTaskImpl(
     }
 
     override fun toString(): String {
-        return "WorkTask(time=$time, workerId=$workerId, blockTask=$blockTask)"
+        return "WorkTask(time=$time, workerId=$workerId, blockTask=$taskType)"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -228,16 +231,13 @@ open class WorkTaskImpl(
 
         if (time != other.time) return false
         if (workerId != other.workerId) return false
-        if (blockTask != other.blockTask) return false
+        if (taskType != other.taskType) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = time.hashCode()
-        result = 31 * result + workerId.hashCode()
-        result = 31 * result + blockTask.hashCode()
-        return result
+        return Objects.hash(time, workerId, taskType)
     }
 
 }

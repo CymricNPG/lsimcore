@@ -1,11 +1,13 @@
 package net.npg.lsimcore
 
 import net.npg.lsimcore.base.Id
+import net.npg.lsimcore.time.TaskType
 import net.npg.lsimcore.time.Time
 import net.npg.lsimcore.time.WorkTaskImpl
 import net.npg.lsimcore.time.fromMs
 import org.junit.jupiter.api.Test
 import java.util.concurrent.ConcurrentSkipListSet
+import kotlin.math.abs
 import kotlin.random.Random
 
 @Deprecated(message = "to remove just a playground")
@@ -20,7 +22,7 @@ class QueuePerformanceTest {
                 MutableWorkTaskImpl(
                     fromMs(i + 100 + random.nextLong() % 50),
                     Id.create(),
-                    random.nextLong() % 50 > 25
+                    TaskType.entries[abs(random.nextInt() % 3)]
                 )
             )
         }
@@ -36,7 +38,7 @@ class QueuePerformanceTest {
                 val index = i % (size - 1)
                 val remove = values[index]
                 queue.removeIf {
-                    it.workerId == remove.workerId && it.blockTask == remove.blockTask
+                    it.workerId == remove.workerId && it.taskType == remove.taskType
                 }
                 val minElement = queue.first()
                 assert(minElement != null)
@@ -44,7 +46,7 @@ class QueuePerformanceTest {
                 val newValue = MutableWorkTaskImpl(
                     fromMs(i + 100 + size + random.nextLong() % 50),
                     Id.create(),
-                    random.nextInt() % 50 > 25
+                    TaskType.entries[abs(random.nextInt() % 3)]
                 )
                 values[index] = newValue
                 queue.add(newValue)
@@ -62,5 +64,5 @@ class QueuePerformanceTest {
 class MutableWorkTaskImpl(
     override var time: Time,
     override var workerId: Id,
-    override var blockTask: Boolean
-) : WorkTaskImpl(time, workerId, blockTask)
+    override var taskType: TaskType
+) : WorkTaskImpl(time, workerId, taskType)

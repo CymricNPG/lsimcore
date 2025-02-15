@@ -1,6 +1,7 @@
 package net.npg.lsimcore
 
 import net.npg.lsimcore.base.Id
+import net.npg.lsimcore.time.TaskType
 import net.npg.lsimcore.time.WorkTask
 import net.npg.lsimcore.time.WorkTaskImpl
 import net.npg.lsimcore.time.fromMs
@@ -16,10 +17,10 @@ internal class WorkTaskTest {
         val id1 = Id.create()
         val id2 = Id.create()
         val list = mutableListOf(
-            WorkTaskImpl(fromMs(1000), id2, false),
-            WorkTaskImpl(fromMs(500), id2, false),
-            WorkTaskImpl(fromMs(1000), id1, true),
-            WorkTaskImpl(fromMs(500), id1, true),
+            WorkTaskImpl(fromMs(1000), id2, TaskType.ADVANCE_GRANTED),
+            WorkTaskImpl(fromMs(500), id2, TaskType.ADVANCE_GRANTED),
+            WorkTaskImpl(fromMs(1000), id1, TaskType.BLOCKING),
+            WorkTaskImpl(fromMs(500), id1, TaskType.BLOCKING),
         )
         Assertions.assertThat(list[0]).isGreaterThan(list[2])
         Assertions.assertThat(list[0]).isGreaterThan(list[3])
@@ -32,10 +33,10 @@ internal class WorkTaskTest {
         assertEquals(fromMs(1000), list[2].time)
         assertEquals(fromMs(1000), list[3].time)
 
-        assertEquals(true, list[0].blockTask, list.joinToString(","))
-        assertEquals(false, list[1].blockTask, list.joinToString(","))
-        assertEquals(true, list[2].blockTask, list.joinToString(","))
-        assertEquals(false, list[3].blockTask, list.joinToString(","))
+        assertEquals(TaskType.BLOCKING, list[0].taskType, list.joinToString(","))
+        assertEquals(TaskType.ADVANCE_GRANTED, list[1].taskType, list.joinToString(","))
+        assertEquals(TaskType.BLOCKING, list[2].taskType, list.joinToString(","))
+        assertEquals(TaskType.ADVANCE_GRANTED, list[3].taskType, list.joinToString(","))
     }
 
     @Test
@@ -43,10 +44,10 @@ internal class WorkTaskTest {
         val id1 = Id.create()
         val id2 = Id.create()
         val list = mutableListOf(
-            WorkTaskImpl(fromMs(0), id2, false),
-            WorkTaskImpl(fromMs(100), id2, true),
-            WorkTaskImpl(fromMs(0), id1, false),
-            WorkTaskImpl(fromMs(50), id1, true),
+            WorkTaskImpl(fromMs(0), id2, TaskType.ADVANCE_GRANTED),
+            WorkTaskImpl(fromMs(100), id2, TaskType.BLOCKING),
+            WorkTaskImpl(fromMs(0), id1, TaskType.ADVANCE_GRANTED),
+            WorkTaskImpl(fromMs(50), id1, TaskType.BLOCKING),
         )
         val queue = PriorityQueue<WorkTask>()
         list.stream().forEach(queue::add)

@@ -57,4 +57,28 @@ internal class WorkTaskTest {
         assertEquals(fromMs(100), queue.poll().time)
     }
 
+    @Test
+    fun `queue test sorting task type`() {
+        val id1 = Id.create()
+        val id2 = Id.create()
+        val id3 = Id.create()
+        val list = mutableListOf(
+            WorkTaskImpl(fromMs(0), id1, TaskType.EXTERNAL_ADVANCE),
+            WorkTaskImpl(fromMs(0), id2, TaskType.ADVANCE_GRANTED),
+            WorkTaskImpl(fromMs(0), id3, TaskType.BLOCKING),
+        )
+        val queue = PriorityQueue<WorkTask>()
+        list.stream().forEach(queue::add)
+        assertEquals(TaskType.ADVANCE_GRANTED, queue.poll().taskType)
+        assertEquals(TaskType.BLOCKING, queue.poll().taskType)
+        assertEquals(TaskType.EXTERNAL_ADVANCE, queue.poll().taskType)
+    }
+
+    @Test
+    fun `test ordering of TaskType`() {
+        Assertions.assertThat(TaskType.ADVANCE_GRANTED).isLessThan(TaskType.EXTERNAL_ADVANCE)
+        Assertions.assertThat(TaskType.ADVANCE_GRANTED).isLessThan(TaskType.BLOCKING)
+        Assertions.assertThat(TaskType.BLOCKING).isLessThan(TaskType.EXTERNAL_ADVANCE)
+    }
+
 }

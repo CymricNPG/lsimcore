@@ -31,7 +31,8 @@ class WorkQueue(
     private val wallClock: WallClock,
     private val requestExecutor: RequestExecutor,
     private val logger: Logger = NOPLogger(),
-    private val timeDefinition: TimeDefinition = msTIME
+    private val timeDefinition: TimeDefinition = msTIME,
+    private val externalTimeManagement: BlockingTimeManagement? = null
 ) : TimeManagement {
 
     private val queue: SortedQueue<WorkTask> = SortedQueueWrapper.createDefaultQueue()
@@ -49,6 +50,13 @@ class WorkQueue(
      * endLatch is reached if stopTime is reached
      */
     private val endLatch = CountDownLatch(1)
+
+
+    init {
+        if (externalTimeManagement != null) {
+            queue.add(WorkTaskImpl(timeDefinition.zeroTime, Id.create(), TaskType.EXTERNAL_ADVANCE))
+        }
+    }
 
     override fun removeWorker(worker: Worker) {
         synchronized(queue) {
@@ -112,7 +120,6 @@ class WorkQueue(
             logger.log(
                 LogLevel.WARN,
                 "While handling worker ${worker.id} an error happened, the worker will be removed",
-                e
             )
             removeWorker(worker)
         }
@@ -154,6 +161,14 @@ class WorkQueue(
     }
 
     private fun advanceAllWaitingTasks() {
+        if (queue.peek()?.taskType == TaskType.EXTERNAL_ADVANCE) {
+            val lastTask = queue.poll() // remove blocking task
+            val nextTime = queue.peek()?.time ?: externalTimeManagement?.defaultAdvance()
+            if (nextTime != null) {
+                externalTimeManagement?.requestAdvance(nextTime)
+                queue.add(WorkTaskImpl(nextTime, lastTask.workerId, TaskType.EXTERNAL_ADVANCE))
+            }
+        }
         while (queue.peek()?.taskType == TaskType.ADVANCE_GRANTED) {
             val nextTask = queue.poll()
             advanceTime(nextTask.time)
@@ -185,8 +200,9 @@ class WorkQueue(
 
 /**
  * a WorkTask can either be :
- * - blocking : The Worker hasn't finished, the time management is waiting for an advance time request
- * - non-blocking: The worker waits for execution
+ * - BLOCKING : The Worker hasn't finished, the time management is waiting for an advance time request
+ * - ADVANCE_GRANTED: The worker waits for execution
+ * - EXTERNAL_ADVANCE
  */
 interface WorkTask : Comparable<WorkTask> {
     val time: Time
@@ -194,10 +210,13 @@ interface WorkTask : Comparable<WorkTask> {
     val taskType: TaskType
 }
 
+/**
+ * important for sorting, first ADVANCE_GRANTED then BLOCKING then EXTERNAL_ADVANCE
+ */
 enum class TaskType {
-    EXTERNAL_ADVANCE,
-    BLOCKING,
     ADVANCE_GRANTED,
+    BLOCKING,
+    EXTERNAL_ADVANCE,
 }
 
 open class WorkTaskImpl(

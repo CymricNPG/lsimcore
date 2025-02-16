@@ -31,6 +31,8 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.commons.math3)
+    testImplementation(libs.assertj.core)
+
 }
 
 tasks.withType<Test> {

@@ -48,21 +48,23 @@ interface TimeManagement {
 }
 
 interface BlockingTimeManagement {
-
     fun requestAdvance(nextTime: Time)
-
+    fun defaultAdvance(): Time
 }
 
-/**
- * An interface to a worker
- */
-interface Worker {
+interface AdvanceGrantedListener {
     /**
      * callback method when a requestAdvance is granted, the nextTime requested is the granted time.
      * The method is called in a thread depending on the used RequestExecutor,
      * if an error happens the worker will be removed from the time management
      */
     fun advanceGranted(time: Time)
+}
+
+/**
+ * An interface to a worker
+ */
+interface Worker : AdvanceGrantedListener {
 
     /**
      * the lookahead which should be initially used
